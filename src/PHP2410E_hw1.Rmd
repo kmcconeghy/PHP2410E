@@ -1,0 +1,127 @@
+---
+title: "PHP 2410E  - Assignment 1"
+output:
+  html_notebook:
+    code_folding: hide
+    fig_caption: yes
+    toc: yes
+    toc_depth: 3
+    toc_float:
+      collapsed: yes
+params:
+  code_nm: 
+    value: 'hw1'
+    src_cfg: 'C:\\Users\\User\\Documents\\GitHub\\PHP2410E\\PHP2410E_setup.R'
+---
+# Setup
+```{r setup, }
+#clear
+  knitr::opts_chunk$set(warning = F, message = F)
+  source(src_cfg)
+```
+
+### Brown University   
+### School of Public Health   
+### PHP 2410E - Class assignment 1
+
+*Project started:* `r prj.StDate`  
+*Documented created* `r Sys.time()`  
+*Programmer:* `r prj.coder`  
+
+Assignment as written:  
+
+ * Data Assignment #1
+ * Working with Medicare Public Use Files
+ * Due September 19th, 2019  
+ 
+### Assignment given  
+
+> CMS is committed to increasing access to its Medicare claims data through the release of de-identified data files available for public use. The first phase in this effort is the release of the 5% sample Public Use Files for a variety of Medicare claim types for the periods 2006-2014. These files are available to researchers as free downloads in CSV and/or Excel format, depending upon the year. They contain non-identifiable claim-specific information and are within the public domain.
+ 
+> Of paramount importance in the release of Public Use Files is the protection of beneficiary confidentiality. To that end all directly identifiable information has been removed. Moreover, other potentially identifying variables, which might cause identification by themselves or enable it in combination with other variables, have either been removed from the files or their values re-coded. See the general documentation file for each claim type for specific information concerning de-identification and variable values. 
+
+> The files can be find here: https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/BSAPUFS/index.html  
+
+> Each file has its own documentation describing file layout and variable values, as well as program code for creating SAS datasets. Click on the link in the left menu for the specific PUF to access documentation and download instructions. 
+
+> Specification of Data Assignment
+There are five possible PUF files on the CMS web site.  Each is described below. Select at least one and do the following:
+1.	Read the data into a SAS or STATA analysis file using the format statement provided;
+2. 	Run summary statistics on all variables (except the ID number); this is either a frequency distribution for a nominal or ordinal variable and means, standard deviations and percentiles for the continuous variables like expenditures, etc.
+3.	Compare some possible dependent variable that characterizes the utilization event (length of stay in days, expenditures, cost or some other analytic variable) by age categories of your choosing and sex. 
+4.	Write up the results of what you've done in no more than 3 paragraphs, referring to summary tables associated with task 2 or 3 above.  This write up should, among other things, comment on the level of skew and variation in the analytic variables like length of stay or expenditures.
+
+## Public Use Files  
+
+For this assignment the inpatient file was chosen and downloaded.  
+
+https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/BSAPUFS/Downloads/2008_BSA_Inpatient_Claims_PUF.zip
+
+### File downloaded directly  
+```{r }
+url <- 'https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/BSAPUFS/Downloads/2008_BSA_Inpatient_Claims_PUF.zip'
+
+filename <- '2008_BSA_Inpatient_Claims_PUF.csv'
+
+temp <- tempfile()
+download.file(url, temp)
+df_raw <- read.csv(unz(temp, filename), header = T)
+unlink(temp)
+```
+
+### Basic description of file  
+```{r }
+des_df(df_raw, c('Raw Inpatient PUF for 2008, downloaded from CMS'), 'IP_CLM_ID')
+```
+The file is one row per unique claim ID.  
+
+### Comparison to reported statistics from website  
+
+#### Extract table results from PDF report  
+```{r }
+library(tabulizer)
+url = 'https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/BSAPUFS/Downloads/2008_Enrollment_and_User_Rates.pdf'
+
+lst_cms_tbls <- extract_tables(url, encoding="UTF-8") 
+```
+
+#### CMS Report Enrollment Rates  
+```{r }
+cms_enrll <- lst_cms_tbls[[1]] 
+
+colnames(cms_enrll) <- cms_enrll[1, ]
+cms_enrll <- cms_enrll[-1 ,] %>%
+  as_tibble(.) %>%
+  rename(`Gender, Months of Enrollment` = `85 and  Months of Enrollment`,
+         `85 and Older` = `Total older`,
+         `Total` = V9)
+
+DT::datatable(cms_enrll)
+```
+#### CMS Reported Inpatient use rates  
+```{r }
+cms_inpat <- lst_cms_tbls[[3]] 
+
+colnames(cms_inpat) <- cms_inpat[1, ]
+cms_inpat <- cms_inpat[-1 ,] %>%
+  as_tibble(.) 
+
+DT::datatable(cms_inpat)
+```
+
+## Data Description  
+
+```{r }
+url = 'https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/BSAPUFS/Downloads/2008_BSA_Inpatient_Claims_PUF_DataDic_CB.pdf'
+
+lst_dta_tbls <- extract_tables(url, encoding="UTF-8") 
+```
+
+## Session Info  
+```{r, }
+sessioninfo::session_info()[[1]]
+```
+
+```{r }
+datatable(sessioninfo::session_info()[[2]])
+```
