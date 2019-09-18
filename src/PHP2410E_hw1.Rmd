@@ -1,51 +1,62 @@
 ---
 title: "PHP 2410E  - Assignment 1"
+author: "Kevin W. McConeghy"
+date: "Compiled: `r Sys.Date()`"
+output: 
+  pdf_document:
+    toc: true
+    toc_depth: 2
+bibliography: hsrrefs.bib
+link-citations: yes
 params:
-  code_nm:
-    value: hw1
-  src_cfg:
-    value: PHP2410E\\PHP2410E_setup.R
-output:
-  html_document:
-    df_print: paged
-    code_folding: hide
-    toc: yes
----
-# Setup
+  code_nm: 
+    value: 'hw1'
+  src_cfg: 
+    value: 'PHP2410E\\PHP2410E_setup.R'
+always_allow_html: yes
+---  
+\newpage 
 ```{r setup, include=FALSE}
 #clear
   knitr::opts_chunk$set(warning = F, message = F)
   if (Sys.getenv('USERNAME')=='kmcconeg') {
     path = 'C:\\Github\\'
-    }
-  source(paste0(path, params$src_cfg))
+  } else {
+    path = '~\\Github\\'
+  }
+
+source(paste0(path, params$src_cfg))
+
+library(knitr)
+library(here)
+opts_chunk$set(echo=F) 
 ```
 
-### Brown University   
-### School of Public Health   
-### PHP 2410E - Class assignment 1
+# Introduction  
 
-*Project started:* `r prj.StDate`  
-*Documented created* `r Sys.time()`  
-*Programmer:* `r prj.coder`  
+This is the completed assignment 1 for the ‘Medicare data’ course at Brown University.  
+All code is stored in a Github repository, https://github.com/kmcconeghy/PHP2410E  
+
+## Statement of work  
+
+This document was created solely by the author, guidance in the homework solutions was driven by class instruction, materials or prior experience. The solutions were not shared with anyone else.  
+
+## Note on R markdown  
+This report was generated using R markdown, LaTEX, and several non-base R packages (e.g. tidyverse).  
+```{r, include=F, warning=F, message=F}
+pkg_load <- c('Scotty', 'tidyverse', 'rJava', 'kableExtra')
+
+sapply(pkg_load, library, logical.return=F, warn.conflicts=F, quietly=T, character.only=T)
+```
+```{r, echo=F}
+cat('Non-base packages loaded: ', pkg_load)
+```
 
 Assignment as written:  
 
  * Data Assignment #1
  * Working with Medicare Public Use Files
  * Due September 19th, 2019  
-
-# Introduction  
-This is the completed assignment 1 for the ‘Medicare data’ course at Brown University.  
-
-All code is stored in a Github repository, https://github.com/kmcconeghy/PHP2410E)  
-
-# Statement of work  
-
-This document was created solely by the author, guidance in the homework solutions was driven by class instruction, materials or prior experience. The solutions were not shared with anyone else.  
-
-## Note on R markdown
-This report was generated using R markdown, LaTEX, and several non-base R packages (e.g. tidyverse).
 
 # Assignment Overview  
 
@@ -69,8 +80,8 @@ For this assignment the inpatient file was chosen and downloaded.
 
 https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/BSAPUFS/Downloads/2008_BSA_Inpatient_Claims_PUF.zip
 
-### File downloaded directly  
-```{r }
+```{r }  
+## File downloaded directly  
 url <- 'https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/BSAPUFS/Downloads/2008_BSA_Inpatient_Claims_PUF.zip'
 
 filename <- '2008_BSA_Inpatient_Claims_PUF.csv'
@@ -81,7 +92,7 @@ df_raw <- read.csv(unz(temp, filename), header = T)
 unlink(temp)
 ```
 
-### Read in SAS infile statement for labels  
+## Read in SAS infile statement for labels  
 CMS provides a SAS infile statement for working with data, this is read in and 
 used to relabel raw .csv file in R.    
 ```{r }
@@ -161,12 +172,10 @@ colnames(cms_inpat) <- cms_inpat[1, ]
 cms_inpat <- cms_inpat[-1 ,] %>%
   as_tibble(.) 
 
-DT::datatable(cms_inpat)
+kable(cms_inpat)
 ```
 
 ## Data Description  
-
-### Confirm infile step  
 
 #### Sample table from codebook  
 ```{r }
@@ -180,15 +189,15 @@ colnames(cbook_dta_gndr) <- cbook_dta_gndr[1, ]
 cbook_dta_gndr <- cbook_dta_gndr[-1 ,] %>%
   as_tibble(.) 
 
-DT::datatable(cbook_dta_gndr)
+kable(cbook_dta_gndr)
 ```
 
-#### Raw data-file comparison for Sex  
+#### Raw data-file comparison for sex  
 ```{r }
 df_raw$BENE_SEX_IDENT_CD %>%
   table(.)
 ```
-file loaded into R appears to be consistent with reported tables from CMS.    
+The file loaded into R appears to be consistent with reported tables from CMS.    
 
 # Assignment 1.2  Summary statistics  
 > 2. 	Run summary statistics on all variables (except the ID number); this is either a frequency distribution for a nominal or ordinal variable and means, standard deviations and percentiles for the continuous variables like expenditures, etc. 
@@ -231,16 +240,20 @@ str(select(df_2, -ip_clm_id))
 df_2 %>%
   group_by(gender) %>%
   summarize(n = n(),
-            percent = round(n() / nrow(df_2) *100, 2)) 
+            percent = round(n() / nrow(df_2) *100, 2)) %>%
+  kable(.) 
+
 df_2 %>%
   group_by(age_cat) %>%
   summarize(n = n(),
-            percent = round(n() / nrow(df_2) *100, 2)) 
+            percent = round(n() / nrow(df_2) *100, 2)) %>%
+  kable(.)
 
 df_2 %>%
   group_by(ip_clm_days_cd) %>%
   summarize(n = n(),
-            percent = round(n() / nrow(df_2) *100, 2)) 
+            percent = round(n() / nrow(df_2) *100, 2)) %>%
+  kable(.)
 ```
 
 ### Most DRG codes - Top 10 Codes  
@@ -251,7 +264,7 @@ df_2 %>%
             percent = round(n() / nrow(df_2) *100, 2)) %>%
   arrange(desc(n)) %>%
   slice(1:10) %>%
-  DT::datatable(.)
+  kable(.)
 ```
 
 ### Most ICD Procedures codes - Top 10 Codes  
@@ -262,41 +275,88 @@ df_2 %>%
             percent = round(n() / nrow(df_2) *100, 2)) %>%
   arrange(desc(n)) %>%
   slice(1:10) %>%
-  DT::datatable(.)
+  kable(.)
 ```
 
 ### DRG Payment  
 ```{r }
-Hmisc::describe(df_2$ip_drg_quint_pmt_avg) 
+cat('Variable: ip_drg_quint_pmt_avg \n')
+c(summary(df_2$ip_drg_quint_pmt_avg), 'SD' = sd(df_2$ip_drg_quint_pmt_avg)) 
 ```
 
 ### Payment distribution  
-```{r, }
+#### Figure 1. Distribution of Payments among Hospitalized Medicare Beneficiaries  
+```{r, fig.width=6}
 ggplot(df_2, aes(x = ip_drg_quint_pmt_avg)) +
   geom_histogram(bins = 100, aes(y=..density..), colour="black", fill="white") +
   geom_density(alpha=.2, fill="#FF6666") +
-  xlab('Payment ($)') + ylab('Density') +
-  ggtitle('Figure 1. Distribution of Payments among Hospitalized Medicare Beneficiaries')
+  xlab('Payment ($)') + ylab('Density')
 ```
 
 # Assignment 1.3 Dependent variable:  
 > 3.	Compare some possible dependent variable that characterizes the utilization event (length of stay in days, expenditures, cost or some other analytic variable) by age categories of your choosing and sex.  
 
 We will use the `IP_DRG_QUINT_PMT_AVG` variable. Per the data dictionary:  
+
 > Average Medicare total claim payment amount of the quintile for the
 > payments (of a particular DRG) in the 100% Inpatient claims data for 2008.  
 
+Restated this is the average payment for a person of equal sex, age, drg category who is in the same quintile of payment distribution as the person in this limited file. So a reasonable approximation of the payment actually sent to that person.  
+```{r }
+df_pay <- df_2 %>%
+  group_by(gender, age_cat) %>%
+  summarize(`Mean ($)` = mean(ip_drg_quint_pmt_avg),
+            `SD ($)` = sd(ip_drg_quint_pmt_avg)) %>%
+  mutate_at(c(3, 4), list(~prettyNum(., big.mark=',', digits=0))) %>%
+  rename(Gender = gender, `Age category` = age_cat)
 
+kable(df_pay)
+```
 
+### Figure 2. Payments (mean, log, and 95% upper threshold)  
+```{r, fig.width=5, fig.height=3, fig.show='hold'}
+df_g <- df_2 %>%
+  group_by(gender, age_cat) %>%
+  summarize(`Mean ($)` = mean(ip_drg_quint_pmt_avg),
+            `Log($)` = mean(log(ip_drg_quint_pmt_avg)),
+            `95% ($)` = quantile(ip_drg_quint_pmt_avg, probs=0.95)) %>%
+  rename(Gender = gender)
+
+ggplot(df_g,  aes(x = age_cat, y=`Mean ($)`, group = Gender, color=Gender)) +
+  geom_line() +
+  geom_point() +
+  scale_color_brewer(palette="Paired") +
+  xlab('Age Category') +
+  theme_minimal()
+
+ggplot(df_g,  aes(x = age_cat, y=`Log($)`, group = Gender, color=Gender)) +
+  geom_line() +
+  geom_point() +
+  scale_color_brewer(palette="Paired") +
+  xlab('Age Category') +
+  theme_minimal()
+
+ggplot(df_g,  aes(x = age_cat, y=`95% ($)`, group = Gender, color=Gender)) +
+  geom_line() +
+  geom_point() +
+  scale_color_brewer(palette="Paired") +
+  xlab('Age Category') +
+  theme_minimal()
+```
 
 # Assignment 1.4 Summary Description  
 > 4.	Write up the results of what you've done in no more than 3 paragraphs, referring to summary tables associated with task 2 or 3 above.  This write up should, among other things, comment on the level of skew and variation in the analytic variables like length of stay or expenditures.  
 
-## Session Info  
+This analysis was a exploratory exercise conducted as part of a course on understanding and analyzing Medicare data for research purposes. A limited datafile which contained information on Medicare beneficiaries' hospitalizations in 2008 was downloaded from an online repository mainted by ResDAC, the data analysis center for the Center for Medicare and Medicaid Services. The file was formatted, summarized and the relationship between Avg. DRG-based payments, age and gender was evaluated in an informal exercise.  The primary research aim was to evaluate how payment rates vary by age, gender and variability of the data.  
+
+The comma-separated file was downloaded directly  f
+
+# Session Info  
 ```{r, }
 sessioninfo::session_info()[[1]]
 ```
 
+## Packages  
 ```{r }
-DT::datatable(sessioninfo::session_info()[[2]])
+kable(sessioninfo::session_info()[[2]])
 ```
