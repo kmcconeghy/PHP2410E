@@ -5,11 +5,12 @@
 #
 
 #--System options
-  cat('Setting R system options....')
-  options(scipen=999)
-  options(max.print = 250)
-  cat('Done', '\n')
-  Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre7')
+cat('Setting R system options....')
+options(scipen=999)
+options(max.print = 250)
+cat('Done', '\n')
+Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre1.8.0_221')
+
 
 #--Folders to be created (if not existing)
   prj.dirs <- c("data", "reports", "src")
@@ -20,7 +21,9 @@
   
 #--Others
   #--Programming objects
-  prj.root <- "~/GitHub/PHP2410E"
+  if (Sys.getenv('USERNAME')=='kmcconeg') {
+    prj.root = 'C:\\Github\\PHP2410E'
+  }  
   setwd(prj.root)
   prj.nm <- "PHP2410E"
   prj.coder <- "Kevin W. McConeghy"

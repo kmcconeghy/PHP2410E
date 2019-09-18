@@ -5,19 +5,20 @@ output:
     code_folding: hide
     fig_caption: yes
     toc: yes
-    toc_depth: 3
-    toc_float:
-      collapsed: yes
 params:
   code_nm: 
     value: 'hw1'
-    src_cfg: 'C:\\Users\\User\\Documents\\GitHub\\PHP2410E\\PHP2410E_setup.R'
+  src_cfg: 
+    value: 'PHP2410E\\PHP2410E_setup.R'
 ---
 # Setup
 ```{r setup, }
 #clear
   knitr::opts_chunk$set(warning = F, message = F)
-  source(src_cfg)
+  if (Sys.getenv('USERNAME')=='kmcconeg') {
+    path = 'C:\\Github\\'
+    }
+  source(paste0(path, params$src_cfg))
 ```
 
 ### Brown University   
@@ -33,8 +34,20 @@ Assignment as written:
  * Data Assignment #1
  * Working with Medicare Public Use Files
  * Due September 19th, 2019  
- 
-### Assignment given  
+
+# Introduction  
+This is the completed assignment 1 for the ‘Medicare data’ course at Brown University.  
+
+All code is stored in a Github repository, https://github.com/kmcconeghy/PHP2410E)  
+
+# Statement of work  
+
+This document was created solely by the author, guidance in the homework solutions was driven by class instruction, materials or prior experience. The solutions were not shared with anyone else.  
+
+## Note on R markdown
+This report was generated using R markdown, LaTEX, and several non-base R packages (e.g. tidyverse).
+
+# Assignment Overview  
 
 > CMS is committed to increasing access to its Medicare claims data through the release of de-identified data files available for public use. The first phase in this effort is the release of the 5% sample Public Use Files for a variety of Medicare claim types for the periods 2006-2014. These files are available to researchers as free downloads in CSV and/or Excel format, depending upon the year. They contain non-identifiable claim-specific information and are within the public domain.
  
@@ -45,11 +58,10 @@ Assignment as written:
 > Each file has its own documentation describing file layout and variable values, as well as program code for creating SAS datasets. Click on the link in the left menu for the specific PUF to access documentation and download instructions. 
 
 > Specification of Data Assignment
-There are five possible PUF files on the CMS web site.  Each is described below. Select at least one and do the following:
-1.	Read the data into a SAS or STATA analysis file using the format statement provided;
-2. 	Run summary statistics on all variables (except the ID number); this is either a frequency distribution for a nominal or ordinal variable and means, standard deviations and percentiles for the continuous variables like expenditures, etc.
-3.	Compare some possible dependent variable that characterizes the utilization event (length of stay in days, expenditures, cost or some other analytic variable) by age categories of your choosing and sex. 
-4.	Write up the results of what you've done in no more than 3 paragraphs, referring to summary tables associated with task 2 or 3 above.  This write up should, among other things, comment on the level of skew and variation in the analytic variables like length of stay or expenditures.
+There are five possible PUF files on the CMS web site.  Each is described below. Select at least one and do the following:  
+
+# Assigment 1.1  Infile the data  
+> 1.	Read the data into a SAS or STATA analysis file using the format statement provided; 
 
 ## Public Use Files  
 
@@ -68,6 +80,9 @@ download.file(url, temp)
 df_raw <- read.csv(unz(temp, filename), header = T)
 unlink(temp)
 ```
+
+# Assignment 1.2  Summary statistics  
+> 2. 	Run summary statistics on all variables (except the ID number); this is either a frequency distribution for a nominal or ordinal variable and means, standard deviations and percentiles for the continuous variables like expenditures, etc.  
 
 ### Basic description of file  
 ```{r }
@@ -111,11 +126,61 @@ DT::datatable(cms_inpat)
 
 ## Data Description  
 
+### Confirm infile step  
+
+#### Sample table from codebook  
 ```{r }
 url = 'https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/BSAPUFS/Downloads/2008_BSA_Inpatient_Claims_PUF_DataDic_CB.pdf'
 
 lst_dta_tbls <- extract_tables(url, encoding="UTF-8") 
+
+cbook_dta_gndr <- lst_dta_tbls[[1]]
+
+colnames(cbook_dta_gndr) <- cbook_dta_gndr[1, ]
+cbook_dta_gndr <- cbook_dta_gndr[-1 ,] %>%
+  as_tibble(.) 
+
+DT::datatable(cbook_dta_gndr)
 ```
+
+#### Raw data-file comparison  
+```{r }
+df_raw$BENE_SEX_IDENT_CD %>%
+  table(.)
+```
+Infile step appears to have worked.  
+
+##  Summary Statistics  
+```{r }
+## Formatting 
+df_2 <- df_raw %>%
+  rename_all(., tolower) %>%
+  mutate(ip_clm_id = as.character(ip_clm_id),
+         gender = factor(bene_sex_ident_cd, 
+                         levels = c(1, 2),
+                         labels=c('Male', 'Female')),
+         age_cat = factor(bene_age_cat_cd, 
+                          levels = c(1,2,3,4,5,6),
+                          labels = c('Under 65', '65-69', '70-74',
+                                     '75-79', '80-84', 
+                                     '85 & Older')))
+```
+
+```{r, warning = F}
+d <- df_2 %>%
+  select(-ip_clm_id,-ip_clm_base_drg_cd, 
+         -ip_clm_icd9_prcdr_cd,
+         -bene_sex_ident_cd,
+         -bene_age_cat_cd) %>%
+  Hmisc::describe(.)
+  Hmisc::html(d, size=100, scroll=TRUE)
+```
+
+# Assignment 1.3 Dependent variable:  
+> 3.	Compare some possible dependent variable that characterizes the utilization event (length of stay in days, expenditures, cost or some other analytic variable) by age categories of your choosing and sex.  
+
+# Assignment 1.4 Summary Description  
+> 4.	Write up the results of what you've done in no more than 3 paragraphs, referring to summary tables associated with task 2 or 3 above.  This write up should, among other things, comment on the level of skew and variation in the analytic variables like length of stay or expenditures.  
 
 ## Session Info  
 ```{r, }
@@ -123,5 +188,5 @@ sessioninfo::session_info()[[1]]
 ```
 
 ```{r }
-datatable(sessioninfo::session_info()[[2]])
+DT::datatable(sessioninfo::session_info()[[2]])
 ```
