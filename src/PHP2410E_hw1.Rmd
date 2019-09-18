@@ -1,18 +1,18 @@
 ---
 title: "PHP 2410E  - Assignment 1"
-output:
-  html_notebook:
-    code_folding: hide
-    fig_caption: yes
-    toc: yes
 params:
-  code_nm: 
-    value: 'hw1'
-  src_cfg: 
-    value: 'PHP2410E\\PHP2410E_setup.R'
+  code_nm:
+    value: hw1
+  src_cfg:
+    value: PHP2410E\\PHP2410E_setup.R
+output:
+  html_document:
+    df_print: paged
+    code_folding: hide
+    toc: yes
 ---
 # Setup
-```{r setup, }
+```{r setup, include=FALSE}
 #clear
   knitr::opts_chunk$set(warning = F, message = F)
   if (Sys.getenv('USERNAME')=='kmcconeg') {
@@ -81,8 +81,61 @@ df_raw <- read.csv(unz(temp, filename), header = T)
 unlink(temp)
 ```
 
-# Assignment 1.2  Summary statistics  
-> 2. 	Run summary statistics on all variables (except the ID number); this is either a frequency distribution for a nominal or ordinal variable and means, standard deviations and percentiles for the continuous variables like expenditures, etc.  
+### Read in SAS infile statement for labels  
+CMS provides a SAS infile statement for working with data, this is read in and 
+used to relabel raw .csv file in R.    
+```{r }
+## https://stackoverflow.com/questions/33421854/how-can-i-import-sas-format-files-into-r
+locf <- function(x) {
+  x <- data.frame(x, stringsAsFactors = FALSE)
+  x[x == ''] <- NA
+  indx <- !is.na(x)
+  
+  x[] <- lapply(seq_along(x), function(ii) {
+    idx <- cumsum(indx[, ii])
+    idx[idx == 0] <- NA
+    x[, ii][indx[, ii]][idx]
+  })
+  x[, 1]
+}
+
+fmt <- readLines(paste0(wd.data, '\\', 'BSA_Inpatient_Claims_PUF_2008_2.txt'))
+## not sure if comments are allowed in the value definitions, but
+## this will check for those in case
+fmt <- gsub('\\*.*;|\\/\\*.*\\*\\/', '', fmt)
+
+vars <- gsub('(?i)value\\W+(\\w*)|.', '\\1', fmt, perl = TRUE)
+vars <- locf(vars)
+
+regex <- '[\'\"].*[\'\"]|[\\w\\d-]+'
+vals <- gsub(sprintf('(?i)\\s*(%s)\\s*(=)\\s*(%s)|.', regex, regex),
+             '\\1\\2\\3', fmt, perl = TRUE)
+
+dd <- na.omit(data.frame(values = vars, formats = vals,
+                              stringsAsFactors = FALSE))
+
+df_lbls <- split(dd$formats, dd$values)
+df_lbls <- lapply(df_lbls, function(x) {
+  x <- Filter(nzchar, x)
+  x <- strsplit(x, '=')
+  tw <- function(x) gsub('^\\s+|\\s+$', '', x)
+  sapply(x, function(y)
+    setNames(tw(y[1]), tw(y[2])))
+})
+
+df_lbls <- lapply(df_lbls, function(x) {
+  new_names <- str_replace(names(x), pattern='.NA', replacement='')
+  names(x) <- new_names
+  return(x)
+})
+
+# Fix ICDF  
+sto_names <- names(df_lbls$ICDF)
+df_lbls$ICDF <- str_replace_all(df_lbls$ICDF, '[\']', '') %>%
+  as.numeric(.) 
+names(df_lbls$ICDF) <- sto_names  
+df_lbls$ICDF <- df_lbls$ICDF[-1]
+```
 
 ### Basic description of file  
 ```{r }
@@ -100,19 +153,6 @@ url = 'https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Pub
 lst_cms_tbls <- extract_tables(url, encoding="UTF-8") 
 ```
 
-#### CMS Report Enrollment Rates  
-```{r }
-cms_enrll <- lst_cms_tbls[[1]] 
-
-colnames(cms_enrll) <- cms_enrll[1, ]
-cms_enrll <- cms_enrll[-1 ,] %>%
-  as_tibble(.) %>%
-  rename(`Gender, Months of Enrollment` = `85 and  Months of Enrollment`,
-         `85 and Older` = `Total older`,
-         `Total` = V9)
-
-DT::datatable(cms_enrll)
-```
 #### CMS Reported Inpatient use rates  
 ```{r }
 cms_inpat <- lst_cms_tbls[[3]] 
@@ -143,41 +183,111 @@ cbook_dta_gndr <- cbook_dta_gndr[-1 ,] %>%
 DT::datatable(cbook_dta_gndr)
 ```
 
-#### Raw data-file comparison  
+#### Raw data-file comparison for Sex  
 ```{r }
 df_raw$BENE_SEX_IDENT_CD %>%
   table(.)
 ```
-Infile step appears to have worked.  
+file loaded into R appears to be consistent with reported tables from CMS.    
+
+# Assignment 1.2  Summary statistics  
+> 2. 	Run summary statistics on all variables (except the ID number); this is either a frequency distribution for a nominal or ordinal variable and means, standard deviations and percentiles for the continuous variables like expenditures, etc. 
 
 ##  Summary Statistics  
+First some data-formatting; rename all variables to lower string, factor categories, set the codes to character strings vs. integers.  
+
 ```{r }
 ## Formatting 
 df_2 <- df_raw %>%
   rename_all(., tolower) %>%
   mutate(ip_clm_id = as.character(ip_clm_id),
+         ip_clm_icd9_prcdr_cd = as.character(ip_clm_icd9_prcdr_cd),
          gender = factor(bene_sex_ident_cd, 
                          levels = c(1, 2),
                          labels=c('Male', 'Female')),
          age_cat = factor(bene_age_cat_cd, 
-                          levels = c(1,2,3,4,5,6),
-                          labels = c('Under 65', '65-69', '70-74',
-                                     '75-79', '80-84', 
-                                     '85 & Older')))
+                          levels = df_lbls$AGEF,
+                          labels = names(df_lbls$AGEF)),
+         ip_clm_days_cd = factor(ip_clm_days_cd, 
+                          levels = df_lbls$LOSF,
+                          labels = names(df_lbls$LOSF)),
+         ip_clm_base_drg_cd = factor(ip_clm_base_drg_cd, 
+                          levels = df_lbls$DRGF,
+                          labels = names(df_lbls$DRGF)),
+         ip_clm_icd9_prcdr_cd = factor(ip_clm_icd9_prcdr_cd, 
+                          levels = df_lbls$ICDF,
+                          labels = names(df_lbls$ICDF)),
+         ip_drg_quint_pmt_cd = factor(ip_drg_quint_pmt_cd)) %>%
+  select(-starts_with('bene'))
 ```
 
-```{r, warning = F}
-d <- df_2 %>%
-  select(-ip_clm_id,-ip_clm_base_drg_cd, 
-         -ip_clm_icd9_prcdr_cd,
-         -bene_sex_ident_cd,
-         -bene_age_cat_cd) %>%
-  Hmisc::describe(.)
-  Hmisc::html(d, size=100, scroll=TRUE)
+Structure:
+```{r }
+str(select(df_2, -ip_clm_id))
+```
+
+### Simple Categorical variables  
+```{r, }
+df_2 %>%
+  group_by(gender) %>%
+  summarize(n = n(),
+            percent = round(n() / nrow(df_2) *100, 2)) 
+df_2 %>%
+  group_by(age_cat) %>%
+  summarize(n = n(),
+            percent = round(n() / nrow(df_2) *100, 2)) 
+
+df_2 %>%
+  group_by(ip_clm_days_cd) %>%
+  summarize(n = n(),
+            percent = round(n() / nrow(df_2) *100, 2)) 
+```
+
+### Most DRG codes - Top 10 Codes  
+```{r, }
+df_2 %>%
+  group_by(ip_clm_base_drg_cd) %>%
+  summarize(n = n(),
+            percent = round(n() / nrow(df_2) *100, 2)) %>%
+  arrange(desc(n)) %>%
+  slice(1:10) %>%
+  DT::datatable(.)
+```
+
+### Most ICD Procedures codes - Top 10 Codes  
+```{r, }
+df_2 %>%
+  group_by(ip_clm_icd9_prcdr_cd) %>%
+  summarize(n = n(),
+            percent = round(n() / nrow(df_2) *100, 2)) %>%
+  arrange(desc(n)) %>%
+  slice(1:10) %>%
+  DT::datatable(.)
+```
+
+### DRG Payment  
+```{r }
+Hmisc::describe(df_2$ip_drg_quint_pmt_avg) 
+```
+
+### Payment distribution  
+```{r, }
+ggplot(df_2, aes(x = ip_drg_quint_pmt_avg)) +
+  geom_histogram(bins = 100, aes(y=..density..), colour="black", fill="white") +
+  geom_density(alpha=.2, fill="#FF6666") +
+  xlab('Payment ($)') + ylab('Density') +
+  ggtitle('Figure 1. Distribution of Payments among Hospitalized Medicare Beneficiaries')
 ```
 
 # Assignment 1.3 Dependent variable:  
 > 3.	Compare some possible dependent variable that characterizes the utilization event (length of stay in days, expenditures, cost or some other analytic variable) by age categories of your choosing and sex.  
+
+We will use the `IP_DRG_QUINT_PMT_AVG` variable. Per the data dictionary:  
+> Average Medicare total claim payment amount of the quintile for the
+> payments (of a particular DRG) in the 100% Inpatient claims data for 2008.  
+
+
+
 
 # Assignment 1.4 Summary Description  
 > 4.	Write up the results of what you've done in no more than 3 paragraphs, referring to summary tables associated with task 2 or 3 above.  This write up should, among other things, comment on the level of skew and variation in the analytic variables like length of stay or expenditures.  
