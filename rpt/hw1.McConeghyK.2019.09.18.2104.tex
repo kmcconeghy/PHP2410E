@@ -1,0 +1,925 @@
+\documentclass[]{article}
+\usepackage{lmodern}
+\usepackage{amssymb,amsmath}
+\usepackage{ifxetex,ifluatex}
+\usepackage{fixltx2e} % provides \textsubscript
+\ifnum 0\ifxetex 1\fi\ifluatex 1\fi=0 % if pdftex
+  \usepackage[T1]{fontenc}
+  \usepackage[utf8]{inputenc}
+\else % if luatex or xelatex
+  \ifxetex
+    \usepackage{mathspec}
+  \else
+    \usepackage{fontspec}
+  \fi
+  \defaultfontfeatures{Ligatures=TeX,Scale=MatchLowercase}
+\fi
+% use upquote if available, for straight quotes in verbatim environments
+\IfFileExists{upquote.sty}{\usepackage{upquote}}{}
+% use microtype if available
+\IfFileExists{microtype.sty}{%
+\usepackage{microtype}
+\UseMicrotypeSet[protrusion]{basicmath} % disable protrusion for tt fonts
+}{}
+\usepackage[margin=1in]{geometry}
+\usepackage{hyperref}
+\hypersetup{unicode=true,
+            pdftitle={PHP 2410E - Assignment 1},
+            pdfauthor={Kevin W. McConeghy},
+            pdfborder={0 0 0},
+            breaklinks=true}
+\urlstyle{same}  % don't use monospace font for urls
+\usepackage{graphicx,grffile}
+\makeatletter
+\def\maxwidth{\ifdim\Gin@nat@width>\linewidth\linewidth\else\Gin@nat@width\fi}
+\def\maxheight{\ifdim\Gin@nat@height>\textheight\textheight\else\Gin@nat@height\fi}
+\makeatother
+% Scale images if necessary, so that they will not overflow the page
+% margins by default, and it is still possible to overwrite the defaults
+% using explicit options in \includegraphics[width, height, ...]{}
+\setkeys{Gin}{width=\maxwidth,height=\maxheight,keepaspectratio}
+\IfFileExists{parskip.sty}{%
+\usepackage{parskip}
+}{% else
+\setlength{\parindent}{0pt}
+\setlength{\parskip}{6pt plus 2pt minus 1pt}
+}
+\setlength{\emergencystretch}{3em}  % prevent overfull lines
+\providecommand{\tightlist}{%
+  \setlength{\itemsep}{0pt}\setlength{\parskip}{0pt}}
+\setcounter{secnumdepth}{0}
+% Redefines (sub)paragraphs to behave more like sections
+\ifx\paragraph\undefined\else
+\let\oldparagraph\paragraph
+\renewcommand{\paragraph}[1]{\oldparagraph{#1}\mbox{}}
+\fi
+\ifx\subparagraph\undefined\else
+\let\oldsubparagraph\subparagraph
+\renewcommand{\subparagraph}[1]{\oldsubparagraph{#1}\mbox{}}
+\fi
+
+%%% Use protect on footnotes to avoid problems with footnotes in titles
+\let\rmarkdownfootnote\footnote%
+\def\footnote{\protect\rmarkdownfootnote}
+
+%%% Change title format to be more compact
+\usepackage{titling}
+
+% Create subtitle command for use in maketitle
+\providecommand{\subtitle}[1]{
+  \posttitle{
+    \begin{center}\large#1\end{center}
+    }
+}
+
+\setlength{\droptitle}{-2em}
+
+  \title{PHP 2410E - Assignment 1}
+    \pretitle{\vspace{\droptitle}\centering\huge}
+  \posttitle{\par}
+    \author{Kevin W. McConeghy}
+    \preauthor{\centering\large\emph}
+  \postauthor{\par}
+      \predate{\centering\large\emph}
+  \postdate{\par}
+    \date{Compiled: 2019-09-18}
+
+
+\begin{document}
+\maketitle
+
+{
+\setcounter{tocdepth}{2}
+\tableofcontents
+}
+\newpage
+
+\hypertarget{introduction}{%
+\section{Introduction}\label{introduction}}
+
+This is the completed assignment 1 for the `Medicare data' course at
+Brown University.\\
+All code is stored in a Github repository,
+\url{https://github.com/kmcconeghy/PHP2410E}
+
+\hypertarget{statement-of-work}{%
+\subsection{Statement of work}\label{statement-of-work}}
+
+This document was created solely by the author, guidance in the homework
+solutions was driven by class instruction, materials or prior
+experience. The solutions were not shared with anyone else.
+
+\hypertarget{note-on-r-markdown}{%
+\subsection{Note on R markdown}\label{note-on-r-markdown}}
+
+This report was generated using R markdown, LaTEX, and several non-base
+R packages (e.g.~tidyverse).
+
+\begin{verbatim}
+## Non-base packages loaded:  Scotty tidyverse rJava kableExtra
+\end{verbatim}
+
+Assignment as written:
+
+\begin{itemize}
+\tightlist
+\item
+  Data Assignment \#1
+\item
+  Working with Medicare Public Use Files
+\item
+  Due September 19th, 2019
+\end{itemize}
+
+\hypertarget{assignment-overview}{%
+\section{Assignment Overview}\label{assignment-overview}}
+
+\begin{quote}
+CMS is committed to increasing access to its Medicare claims data
+through the release of de-identified data files available for public
+use. The first phase in this effort is the release of the 5\% sample
+Public Use Files for a variety of Medicare claim types for the periods
+2006-2014. These files are available to researchers as free downloads in
+CSV and/or Excel format, depending upon the year. They contain
+non-identifiable claim-specific information and are within the public
+domain.
+\end{quote}
+
+\begin{quote}
+Of paramount importance in the release of Public Use Files is the
+protection of beneficiary confidentiality. To that end all directly
+identifiable information has been removed. Moreover, other potentially
+identifying variables, which might cause identification by themselves or
+enable it in combination with other variables, have either been removed
+from the files or their values re-coded. See the general documentation
+file for each claim type for specific information concerning
+de-identification and variable values.
+\end{quote}
+
+\begin{quote}
+The files can be find here:
+\url{https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/BSAPUFS/index.html}
+\end{quote}
+
+\begin{quote}
+Each file has its own documentation describing file layout and variable
+values, as well as program code for creating SAS datasets. Click on the
+link in the left menu for the specific PUF to access documentation and
+download instructions.
+\end{quote}
+
+\begin{quote}
+Specification of Data Assignment There are five possible PUF files on
+the CMS web site. Each is described below. Select at least one and do
+the following:
+\end{quote}
+
+\hypertarget{assigment-1.1-infile-the-data}{%
+\section{Assigment 1.1 Infile the
+data}\label{assigment-1.1-infile-the-data}}
+
+\begin{quote}
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\tightlist
+\item
+  Read the data into a SAS or STATA analysis file using the format
+  statement provided;
+\end{enumerate}
+\end{quote}
+
+\hypertarget{public-use-files}{%
+\subsection{Public Use Files}\label{public-use-files}}
+
+For this assignment the inpatient file was chosen and downloaded.
+
+\url{https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/BSAPUFS/Downloads/2008_BSA_Inpatient_Claims_PUF.zip}
+
+\hypertarget{read-in-sas-infile-statement-for-labels}{%
+\subsection{Read in SAS infile statement for
+labels}\label{read-in-sas-infile-statement-for-labels}}
+
+CMS provides a SAS proc format statement for working with data, this is
+read into R and used to relabel the raw `.csv' file in R.
+
+\hypertarget{basic-description-of-file}{%
+\subsubsection{Basic description of
+file}\label{basic-description-of-file}}
+
+\begin{verbatim}
+## Dataframe: Raw Inpatient PUF for 2008, downloaded from CMS
+## Memory Size: 67 Mb  Rows: 588,415  Columns: 8
+## IP_CLM_ID: 588,415 Missing: 0
+\end{verbatim}
+
+The file is one row per unique claim ID.
+
+\hypertarget{comparison-to-reported-statistics-from-website}{%
+\subsubsection{Comparison to reported statistics from
+website}\label{comparison-to-reported-statistics-from-website}}
+
+The CMS report on this data was downloaded in PDF format from the web
+and read into R for comparison.
+
+\hypertarget{extract-table-results-from-pdf-report}{%
+\paragraph{Extract table results from PDF
+report}\label{extract-table-results-from-pdf-report}}
+
+\hypertarget{table-1.-cms-reported-inpatient-use-rates-by-gender-and-enrollment}{%
+\paragraph{Table 1. CMS reported inpatient use rates by gender and
+enrollment}\label{table-1.-cms-reported-inpatient-use-rates-by-gender-and-enrollment}}
+
+V1
+
+Months of Enrollment
+
+Under 65
+
+65 - 69
+
+70 - 74
+
+75 - 79
+
+80 - 84
+
+85 and older
+
+Total
+
+Female
+
+12 months
+
+21.14\%
+
+12.59\%
+
+15.20\%
+
+19.19\%
+
+23.09\%
+
+27.54\%
+
+19.29\%
+
+Female
+
+Less than 12 months(2)
+
+10.81\%
+
+5.85\%
+
+22.11\%
+
+33.39\%
+
+44.18\%
+
+50.49\%
+
+19.42\%
+
+Male
+
+12 months
+
+17.92\%
+
+12.64\%
+
+15.34\%
+
+18.95\%
+
+22.97\%
+
+26.92\%
+
+17.76\%
+
+Male
+
+Less than 12 months(2)
+
+11.52\%
+
+6.51\%
+
+24.67\%
+
+38.57\%
+
+47.94\%
+
+55.32\%
+
+18.18\%
+
+Total
+
+17.93\%
+
+10.86\%
+
+15.80\%
+
+20.26\%
+
+25.01\%
+
+30.77\%
+
+18.64\%
+
+\hypertarget{table-2.-sample-table-on-gender-from-codebook}{%
+\paragraph{Table 2. Sample table on gender from
+codebook}\label{table-2.-sample-table-on-gender-from-codebook}}
+
+Variable Value
+
+Formatted Value
+
+Frequency
+
+Frequency (\%)
+
+1
+
+Male
+
+258,217
+
+43.883\%
+
+2
+
+Female
+
+330,198
+
+56.117\%
+
+\hypertarget{raw-data-file-comparison-for-sex}{%
+\paragraph{Raw data-file comparison for
+sex}\label{raw-data-file-comparison-for-sex}}
+
+\begin{verbatim}
+## BENE_SEX_IDENT_CD
+\end{verbatim}
+
+\begin{verbatim}
+## .
+##      1      2 
+## 258217 330198
+\end{verbatim}
+
+The file loaded into R appears to be consistent with reported tables
+from CMS.
+
+\hypertarget{assignment-1.2-summary-statistics}{%
+\section{Assignment 1.2 Summary
+statistics}\label{assignment-1.2-summary-statistics}}
+
+\begin{quote}
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{1}
+\tightlist
+\item
+  Run summary statistics on all variables (except the ID number); this
+  is either a frequency distribution for a nominal or ordinal variable
+  and means, standard deviations and percentiles for the continuous
+  variables like expenditures, etc.
+\end{enumerate}
+\end{quote}
+
+\hypertarget{summary-statistics}{%
+\subsection{Summary Statistics}\label{summary-statistics}}
+
+First some data-formatting; rename all variables to lower string, factor
+categories, set the codes to character strings vs.~integers.
+
+Data structure:
+
+\begin{verbatim}
+## 'data.frame':    588415 obs. of  7 variables:
+##  $ ip_clm_base_drg_cd  : Factor w/ 311 levels "\"Heart transplant or implant of heart assist system\"",..: 3 199 119 128 236 123 64 284 284 83 ...
+##  $ ip_clm_icd9_prcdr_cd: Factor w/ 100 levels "'Not elsewhere classified'",..: 32 NA 55 NA 71 46 NA NA 95 38 ...
+##  $ ip_clm_days_cd      : Factor w/ 4 levels "'1 day'","'2-3 days'",..: 4 2 4 2 1 2 2 4 2 3 ...
+##  $ ip_drg_quint_pmt_avg: int  86240 3447 34878 3007 3352 2690 5234 2713 9143 23354 ...
+##  $ ip_drg_quint_pmt_cd : Factor w/ 5 levels "1","2","3","4",..: 4 2 5 2 2 1 3 2 5 5 ...
+##  $ gender              : Factor w/ 2 levels "Male","Female": 2 2 1 2 2 1 1 2 1 2 ...
+##  $ age_cat             : Factor w/ 6 levels "'Under  65 '",..: 4 5 1 2 2 1 3 2 1 3 ...
+\end{verbatim}
+
+\hypertarget{tables-3.-gender}{%
+\subsubsection{Tables 3. Gender}\label{tables-3.-gender}}
+
+gender
+
+n
+
+percent
+
+Male
+
+258217
+
+43.88
+
+Female
+
+330198
+
+56.12
+
+\hypertarget{tables-4.-age-category}{%
+\subsubsection{Tables 4. Age Category}\label{tables-4.-age-category}}
+
+age\_cat
+
+n
+
+percent
+
+`Under 65'
+
+116080
+
+19.73
+
+`65 - 69'
+
+77597
+
+13.19
+
+`70 - 74'
+
+86205
+
+14.65
+
+`75 - 79'
+
+91487
+
+15.55
+
+`80 - 84'
+
+94759
+
+16.10
+
+`85 \& Older'
+
+122287
+
+20.78
+
+\hypertarget{tables-5.-length-of-stay}{%
+\subsubsection{Tables 5. Length of
+stay}\label{tables-5.-length-of-stay}}
+
+ip\_clm\_days\_cd
+
+n
+
+percent
+
+`1 day'
+
+76025
+
+12.92
+
+`2-3 days'
+
+261419
+
+44.43
+
+`4-7 days'
+
+122073
+
+20.75
+
+`8 or more days'
+
+128898
+
+21.91
+
+\hypertarget{table-6.-drg-hospitalization-categories---top-10-codes}{%
+\subsubsection{Table 6. DRG hospitalization categories - Top 10
+Codes}\label{table-6.-drg-hospitalization-categories---top-10-codes}}
+
+ip\_clm\_base\_drg\_cd
+
+n
+
+percent
+
+``Heart failure \& shock''
+
+29374
+
+4.99
+
+``Simple pneumonia \& pleurisy''
+
+24317
+
+4.13
+
+``Major joint replacement or reattachment of lower extremity''
+
+23111
+
+3.93
+
+``Chronic obstructive pulmonary disease''
+
+22865
+
+3.89
+
+``Psychoses''
+
+21248
+
+3.61
+
+``Septicemia w/o MV 96+ hours''
+
+17904
+
+3.04
+
+``Rehabilitation''
+
+17219
+
+2.93
+
+``Esophagitis, gastroent \& misc digest disorders''
+
+15226
+
+2.59
+
+``Cardiac arrhythmia \& conduction disorders''
+
+14695
+
+2.50
+
+``Kidney \& urinary tract infections''
+
+14127
+
+2.40
+
+\hypertarget{table-7.-procedures-with-dr---top-10-codes}{%
+\subsubsection{Table 7. Procedures with DR - Top 10
+Codes}\label{table-7.-procedures-with-dr---top-10-codes}}
+
+ip\_clm\_icd9\_prcdr\_cd
+
+n
+
+percent
+
+NA
+
+276546
+
+47.00
+
+`Joint repair'
+
+33100
+
+5.63
+
+`Other nonoperative proc'
+
+29267
+
+4.97
+
+`Intest incis/excis/anast'
+
+27553
+
+4.68
+
+`Other heart/pericard ops'
+
+21613
+
+3.67
+
+`Vessel inc/excis/occlus'
+
+21350
+
+3.63
+
+`Other ops on vessels'
+
+19759
+
+3.36
+
+`Not elsewhere classified'
+
+18535
+
+3.15
+
+`Non-op intubat \& irrigat'
+
+13530
+
+2.30
+
+`Other dx radiology'
+
+11402
+
+1.94
+
+\hypertarget{drg-payment}{%
+\subsubsection{DRG Payment}\label{drg-payment}}
+
+\begin{verbatim}
+## Variable: ip_drg_quint_pmt_avg
+\end{verbatim}
+
+\begin{verbatim}
+##    Min. 1st Qu.  Median    Mean 3rd Qu.    Max.      SD 
+##       0    4008    6352    9313   10760  329467   10483
+\end{verbatim}
+
+\newpage
+
+\hypertarget{payment-distribution}{%
+\subsubsection{Payment distribution}\label{payment-distribution}}
+
+\hypertarget{figure-1.-distribution-of-payments-among-hospitalized-medicare-beneficiaries}{%
+\paragraph{Figure 1. Distribution of Payments among Hospitalized
+Medicare
+Beneficiaries}\label{figure-1.-distribution-of-payments-among-hospitalized-medicare-beneficiaries}}
+
+\includegraphics{C:/Users/kevin/Documents/PHP2410E//rpt/hw1.McConeghyK.2019.09.18.2104_files/figure-latex/unnamed-chunk-18-1.pdf}
+
+\hypertarget{assignment-1.3-dependent-variable}{%
+\section{Assignment 1.3 Dependent
+variable:}\label{assignment-1.3-dependent-variable}}
+
+\begin{quote}
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{2}
+\tightlist
+\item
+  Compare some possible dependent variable that characterizes the
+  utilization event (length of stay in days, expenditures, cost or some
+  other analytic variable) by age categories of your choosing and sex.
+\end{enumerate}
+\end{quote}
+
+We will use the \texttt{IP\_DRG\_QUINT\_PMT\_AVG} variable. Per the data
+dictionary:
+
+\begin{quote}
+Average Medicare total claim payment amount of the quintile for the
+payments (of a particular DRG) in the 100\% Inpatient claims data for
+2008.
+\end{quote}
+
+Restated this is the average payment for a person of equal sex, age, DRG
+category who is in the same quintile of payment distribution as the
+person in this limited file. So a reasonable approximation of the actual
+payment for that person.
+
+\hypertarget{table-8.-average-and-standard-deviation-for-drg-payments-by-gender-age}{%
+\subsubsection{Table 8. Average and standard deviation for DRG payments
+by gender,
+age}\label{table-8.-average-and-standard-deviation-for-drg-payments-by-gender-age}}
+
+Gender
+
+Age category
+
+Mean (\() </th>  <th style="text-align:left;"> SD (\))
+
+Male
+
+`Under 65'
+
+9,632
+
+11,809
+
+Male
+
+`65 - 69'
+
+10,650
+
+13,035
+
+Male
+
+`70 - 74'
+
+10,519
+
+12,032
+
+Male
+
+`75 - 79'
+
+10,413
+
+11,806
+
+Male
+
+`80 - 84'
+
+9,745
+
+10,830
+
+Male
+
+`85 \& Older'
+
+8,774
+
+8,755
+
+Female
+
+`Under 65'
+
+8,750
+
+10,333
+
+Female
+
+`65 - 69'
+
+9,343
+
+10,640
+
+Female
+
+`70 - 74'
+
+9,458
+
+10,401
+
+Female
+
+`75 - 79'
+
+9,285
+
+10,154
+
+Female
+
+`80 - 84'
+
+8,874
+
+9,603
+
+Female
+
+`85 \& Older'
+
+7,981
+
+7,384
+
+\hypertarget{figure-2-4.-payments-mean-log-and-95-upper-threshold}{%
+\subsubsection{Figure 2-4. Payments (mean, log, and 95\% upper
+threshold)}\label{figure-2-4.-payments-mean-log-and-95-upper-threshold}}
+
+\includegraphics{C:/Users/kevin/Documents/PHP2410E//rpt/hw1.McConeghyK.2019.09.18.2104_files/figure-latex/unnamed-chunk-20-1.pdf}
+\includegraphics{C:/Users/kevin/Documents/PHP2410E//rpt/hw1.McConeghyK.2019.09.18.2104_files/figure-latex/unnamed-chunk-20-2.pdf}
+\includegraphics{C:/Users/kevin/Documents/PHP2410E//rpt/hw1.McConeghyK.2019.09.18.2104_files/figure-latex/unnamed-chunk-20-3.pdf}
+
+\newpage
+
+\hypertarget{assignment-1.4-summary-description}{%
+\section{Assignment 1.4 Summary
+Description}\label{assignment-1.4-summary-description}}
+
+\begin{quote}
+\begin{enumerate}
+\def\labelenumi{\arabic{enumi}.}
+\setcounter{enumi}{3}
+\tightlist
+\item
+  Write up the results of what you've done in no more than 3 paragraphs,
+  referring to summary tables associated with task 2 or 3 above. This
+  write up should, among other things, comment on the level of skew and
+  variation in the analytic variables like length of stay or
+  expenditures.
+\end{enumerate}
+\end{quote}
+
+\hypertarget{introduction-and-methods}{%
+\subsection{Introduction and methods}\label{introduction-and-methods}}
+
+This analysis was an exploratory exercise conducted as part of a course
+on understanding and analyzing Medicare data for research purposes. A
+limited datafile which contained information on Medicare beneficiaries'
+hospitalizations in 2008 was downloaded from an online repository
+maintained by ResDAC, the data analysis center for the Center for
+Medicare and Medicaid Services (CMS). The file was formatted,
+summarized, and the relationship between avergae DRG-based payments, age
+and gender was evaluated in an informal exercise. The primary research
+aim was to evaluate how payment rates vary by age, gender and
+variability of the data. The comma-separated file was downloaded
+directly from the CMS website, formatted and edited for exploratory data
+analysis. Categorical variables were tabulated, while expenditures were
+evaluated using a 7-statistic summary and density histogram.
+
+\hypertarget{results}{%
+\subsection{Results}\label{results}}
+
+The inpatient sample is 56\% female, the median age cannot be reported
+for privacy purposes but the most common age groups are those under 65
+(19.7\%) and those 85 and older (20.8\%). Most hospitalizations occur
+over 2-3 days, and the top 10 DRG conditions are listed in Table 6.
+These include heart failure (5.0\%), pneumonia (4.1\%), joint
+replacement (3.9\%) and Chronic Obstructive Pulmonary Disease (COPD,
+3.9\%). Approximately half of inpatient admissions do not have a primary
+ICD9 procedure code, the most common are joint repairs (5.6\%), and
+other cardiovascular, abdominal or non-specific surgical procedures. The
+limited file truncates the procedure code at two digits (i.e.~detail is
+limited). The inpatient file reports payments for each individual
+according to average payments of like individuals (gender, age,
+procedure, actual payment). The mean payment is \$9,313, median \$6,352,
+suggesting a right skewed distribution which is confirmed by the
+histogram (Figure 1). Table 8 shows the mean payments by gender and age
+category. The average expenditure is lowest for those youngest and
+oldest in the sample, with men generally higher than women. The
+log-scale follows a similar relationship, while `high-utilizers', those
+in the 95th percentile, seem less variable by age.
+
+\hypertarget{discussion}{%
+\subsection{Discussion}\label{discussion}}
+
+The sample represents \emph{hospitalized} Medicare beneficiaries so may
+not be representative of the whole Medicare cohort or those with managed
+care plans. The results reveal several important points. Men generally
+have higher DRG-based payments than women, and those in either age
+extreme have lower DRG payments then those 65-85. This could be
+explained by rates of important DRG categories and surgeries which are
+higher in men and those \textless{}85 years such as myocardial infarcts,
+heart failure or COPD. Younger and older individuals may have different
+reasons for lower costs; e.g.~shorter stays, different DRG groups
+(particularly less surgical procedures in the oldest cohort). These
+hypotheses are testable but would require a more in depth evaluation of
+the interplay between age, gender, and particular diagnosis groups to
+understand the importance of underlying condition and its prevalence in
+the general Medicare cohort.
+
+\hypertarget{session-info}{%
+\section{Session Info}\label{session-info}}
+
+Thank you for taking the time to review my work!
+
+\begin{verbatim}
+##  setting  value                       
+##  version  R version 3.6.1 (2019-07-05)
+##  os       Windows 10 x64              
+##  system   x86_64, mingw32             
+##  ui       RStudio                     
+##  language (EN)                        
+##  collate  English_United States.1252  
+##  ctype    English_United States.1252  
+##  tz       America/New_York            
+##  date     2019-09-18
+\end{verbatim}
+
+
+\end{document}

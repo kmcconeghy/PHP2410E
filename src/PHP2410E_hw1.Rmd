@@ -22,7 +22,7 @@ always_allow_html: yes
   if (Sys.getenv('USERNAME')=='kmcconeg') {
     path = 'C:\\Github\\'
   } else {
-    path = '~\\Github\\'
+    path = '~\\'
   }
 
 source(paste0(path, params$src_cfg))
@@ -93,8 +93,7 @@ unlink(temp)
 ```
 
 ## Read in SAS infile statement for labels  
-CMS provides a SAS infile statement for working with data, this is read in and 
-used to relabel raw .csv file in R.    
+CMS provides a SAS proc format statement for working with data, this is read into R and used to relabel the raw '.csv' file in R.      
 ```{r }
 ## https://stackoverflow.com/questions/33421854/how-can-i-import-sas-format-files-into-r
 locf <- function(x) {
@@ -155,6 +154,7 @@ des_df(df_raw, c('Raw Inpatient PUF for 2008, downloaded from CMS'), 'IP_CLM_ID'
 The file is one row per unique claim ID.  
 
 ### Comparison to reported statistics from website  
+The CMS report on this data was downloaded in PDF format from the web and read into R for comparison.  
 
 #### Extract table results from PDF report  
 ```{r }
@@ -164,7 +164,7 @@ url = 'https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Pub
 lst_cms_tbls <- extract_tables(url, encoding="UTF-8") 
 ```
 
-#### CMS Reported Inpatient use rates  
+#### Table 1. CMS reported inpatient use rates by gender and enrollment  
 ```{r }
 cms_inpat <- lst_cms_tbls[[3]] 
 
@@ -175,9 +175,7 @@ cms_inpat <- cms_inpat[-1 ,] %>%
 kable(cms_inpat)
 ```
 
-## Data Description  
-
-#### Sample table from codebook  
+#### Table 2. Sample table on gender from codebook  
 ```{r }
 url = 'https://www.cms.gov/Research-Statistics-Data-and-Systems/Downloadable-Public-Use-Files/BSAPUFS/Downloads/2008_BSA_Inpatient_Claims_PUF_DataDic_CB.pdf'
 
@@ -194,6 +192,7 @@ kable(cbook_dta_gndr)
 
 #### Raw data-file comparison for sex  
 ```{r }
+cat('BENE_SEX_IDENT_CD \n')
 df_raw$BENE_SEX_IDENT_CD %>%
   table(.)
 ```
@@ -230,25 +229,31 @@ df_2 <- df_raw %>%
   select(-starts_with('bene'))
 ```
 
-Structure:
+Data structure:
 ```{r }
 str(select(df_2, -ip_clm_id))
 ```
 
-### Simple Categorical variables  
+### Tables 3. Gender   
 ```{r, }
 df_2 %>%
   group_by(gender) %>%
   summarize(n = n(),
             percent = round(n() / nrow(df_2) *100, 2)) %>%
   kable(.) 
+```
 
+### Tables 4. Age Category   
+```{r}
 df_2 %>%
   group_by(age_cat) %>%
   summarize(n = n(),
             percent = round(n() / nrow(df_2) *100, 2)) %>%
   kable(.)
+```
 
+### Tables 5. Length of stay  
+```{r }
 df_2 %>%
   group_by(ip_clm_days_cd) %>%
   summarize(n = n(),
@@ -256,7 +261,7 @@ df_2 %>%
   kable(.)
 ```
 
-### Most DRG codes - Top 10 Codes  
+### Table 6. DRG hospitalization categories - Top 10 Codes  
 ```{r, }
 df_2 %>%
   group_by(ip_clm_base_drg_cd) %>%
@@ -267,7 +272,7 @@ df_2 %>%
   kable(.)
 ```
 
-### Most ICD Procedures codes - Top 10 Codes  
+### Table 7. Procedures with DR - Top 10 Codes  
 ```{r, }
 df_2 %>%
   group_by(ip_clm_icd9_prcdr_cd) %>%
@@ -281,9 +286,11 @@ df_2 %>%
 ### DRG Payment  
 ```{r }
 cat('Variable: ip_drg_quint_pmt_avg \n')
-c(summary(df_2$ip_drg_quint_pmt_avg), 'SD' = sd(df_2$ip_drg_quint_pmt_avg)) 
+c(summary(df_2$ip_drg_quint_pmt_avg), 'SD' = sd(df_2$ip_drg_quint_pmt_avg)) %>%
+  round(.)
 ```
 
+\newpage  
 ### Payment distribution  
 #### Figure 1. Distribution of Payments among Hospitalized Medicare Beneficiaries  
 ```{r, fig.width=6}
@@ -301,7 +308,9 @@ We will use the `IP_DRG_QUINT_PMT_AVG` variable. Per the data dictionary:
 > Average Medicare total claim payment amount of the quintile for the
 > payments (of a particular DRG) in the 100% Inpatient claims data for 2008.  
 
-Restated this is the average payment for a person of equal sex, age, drg category who is in the same quintile of payment distribution as the person in this limited file. So a reasonable approximation of the payment actually sent to that person.  
+Restated this is the average payment for a person of equal sex, age, DRG category who is in the same quintile of payment distribution as the person in this limited file. So a reasonable approximation of the actual payment for that person.  
+
+### Table 8. Average and standard deviation for DRG payments by gender, age  
 ```{r }
 df_pay <- df_2 %>%
   group_by(gender, age_cat) %>%
@@ -313,8 +322,8 @@ df_pay <- df_2 %>%
 kable(df_pay)
 ```
 
-### Figure 2. Payments (mean, log, and 95% upper threshold)  
-```{r, fig.width=5, fig.height=3, fig.show='hold'}
+### Figure 2-4. Payments (mean, log, and 95% upper threshold)  
+```{r, fig.width=6.5, fig.height=2.5}
 df_g <- df_2 %>%
   group_by(gender, age_cat) %>%
   summarize(`Mean ($)` = mean(ip_drg_quint_pmt_avg),
@@ -326,37 +335,43 @@ ggplot(df_g,  aes(x = age_cat, y=`Mean ($)`, group = Gender, color=Gender)) +
   geom_line() +
   geom_point() +
   scale_color_brewer(palette="Paired") +
-  xlab('Age Category') +
-  theme_minimal()
+  xlab('Age Category') + ylab('$USD') +
+  theme_minimal() +
+  ggtitle('Figure 2. DRG payments by age')
 
 ggplot(df_g,  aes(x = age_cat, y=`Log($)`, group = Gender, color=Gender)) +
   geom_line() +
   geom_point() +
   scale_color_brewer(palette="Paired") +
-  xlab('Age Category') +
-  theme_minimal()
+  xlab('Age Category') + ylab('Log($USD)') +
+  theme_minimal() +
+  ggtitle('Figure 3. Log-scale, DRG payments by age')
 
 ggplot(df_g,  aes(x = age_cat, y=`95% ($)`, group = Gender, color=Gender)) +
   geom_line() +
   geom_point() +
   scale_color_brewer(palette="Paired") +
-  xlab('Age Category') +
-  theme_minimal()
+  xlab('Age Category') + ylab('$USD') +
+  theme_minimal() +
+  ggtitle('Figure 4. 95th percentile for DRG payments by age')
 ```
 
+\newpage
 # Assignment 1.4 Summary Description  
 > 4.	Write up the results of what you've done in no more than 3 paragraphs, referring to summary tables associated with task 2 or 3 above.  This write up should, among other things, comment on the level of skew and variation in the analytic variables like length of stay or expenditures.  
 
-This analysis was a exploratory exercise conducted as part of a course on understanding and analyzing Medicare data for research purposes. A limited datafile which contained information on Medicare beneficiaries' hospitalizations in 2008 was downloaded from an online repository mainted by ResDAC, the data analysis center for the Center for Medicare and Medicaid Services. The file was formatted, summarized and the relationship between Avg. DRG-based payments, age and gender was evaluated in an informal exercise.  The primary research aim was to evaluate how payment rates vary by age, gender and variability of the data.  
+## Introduction and methods  
+  This analysis was an exploratory exercise conducted as part of a course on understanding and analyzing Medicare data for research purposes. A limited datafile which contained information on Medicare beneficiaries' hospitalizations in 2008 was downloaded from an online repository maintained by ResDAC, the data analysis center for the Center for Medicare and Medicaid Services (CMS). The file was formatted, summarized, and the relationship between avergae DRG-based payments, age and gender was evaluated in an informal exercise.  The primary research aim was to evaluate how payment rates vary by age, gender and variability of the data. The comma-separated file was downloaded directly from the CMS website, formatted and edited for exploratory data analysis.  Categorical variables were tabulated, while expenditures were evaluated using a 7-statistic summary and density histogram.  
 
-The comma-separated file was downloaded directly  f
-
+## Results  
+  The inpatient sample is 56% female, the median age cannot be reported for privacy purposes but the most common age groups are those under 65 (19.7%) and those 85 and older (20.8%).  Most hospitalizations occur over 2-3 days, and the top 10 DRG conditions are listed in Table 6. These include heart failure (5.0%), pneumonia (4.1%), joint replacement (3.9%) and Chronic Obstructive Pulmonary Disease (COPD, 3.9%). Approximately half of inpatient admissions do not have a primary ICD9 procedure code, the most common are joint repairs (5.6%), and other cardiovascular, abdominal or non-specific surgical procedures. The limited file truncates the procedure code at two digits (i.e. detail is limited). The inpatient file reports payments for each individual according to average payments of like individuals (gender, age, procedure, actual payment). The mean payment is \$9,313, median \$6,352, suggesting a right skewed distribution which is confirmed by the histogram (Figure 1). Table 8 shows the mean payments by gender and age category. The average expenditure is lowest for those youngest and oldest in the sample, with men generally higher than women. The log-scale follows a similar relationship, while 'high-utilizers', those in the 95th percentile, seem less variable by age.   
+  
+## Discussion  
+  The sample represents *hospitalized* Medicare beneficiaries so may not be representative of the whole Medicare cohort or those with managed care plans. The results reveal several important points. Men generally have higher DRG-based payments than women, and those in either age extreme have lower DRG payments then those 65-85. This could be explained by rates of important DRG categories and surgeries which are higher in men and those <85 years such as myocardial infarcts, heart failure or COPD. Younger and older individuals may have different reasons for lower costs; e.g. shorter stays, different DRG groups (particularly less surgical procedures in the oldest cohort).  These hypotheses are testable but would require a more in depth evaluation of the interplay between age, gender, and particular diagnosis groups to understand the importance of underlying condition and its prevalence in the general Medicare cohort.  
+  
 # Session Info  
+Thank you for taking the time to review my work!  
+
 ```{r, }
 sessioninfo::session_info()[[1]]
-```
-
-## Packages  
-```{r }
-kable(sessioninfo::session_info()[[2]])
 ```

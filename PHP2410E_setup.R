@@ -23,7 +23,9 @@ Sys.setenv(JAVA_HOME='C:\\Program Files\\Java\\jre1.8.0_221')
   #--Programming objects
   if (Sys.getenv('USERNAME')=='kmcconeg') {
     prj.root = 'C:\\Github\\PHP2410E'
-  }  
+  }  else {
+    prj.root = '~\\PHP2410E\\'
+  }
   setwd(prj.root)
   prj.nm <- "PHP2410E"
   prj.coder <- "Kevin W. McConeghy"
