@@ -78,13 +78,212 @@ The overall objective is to better understand the validity of MDS assessments by
 
 ## in-file of dataset  
 ```{r }
-df_mds <- haven::read_dta(paste0(wd.data, 'denon_select.dta'))
+df_mds <- haven::read_dta(paste0(wd.data, 'mds_select.dta'))  
+
+des_df(df_mds, 'MDS dataset', c('id'))
+```
+
+### Data structure  
+```{r }
+str(df_mds)
+```
+
+### Summary statistics  
+
+#### Date of birth  
+```{r }
+summary(df_mds$idbirdt)
+ggplot(df_mds, aes(x = idbirdt)) +
+  geom_histogram() +
+  scale_x_date() +
+  theme_classic()
+```
+
+#### Year  
+```{r }
+df_mds %>%
+  mutate(year = year(dmdate)) %>%
+  group_by(year) %>%
+  summarize(n_assess = n(),
+            n_id = n_distinct(id), 
+            percent = round((n() / nrow(df_mds))*100, 3))
+```
+
+#### Sex  
+```{r }
+df_mds %>%
+  group_by(idgendr) %>%
+  summarize(n = n(),
+            percent = round((n() / nrow(df_mds))*100,3))
+```
+
+```{r }
+df_mds %>%
+  group_by(idrace) %>%
+  summarize(n = n(),
+            percent = round((n() / nrow(df_mds))*100,3))
+```
+
+#### Summary description  
+
+Median age date of birth is in 1921, most recent is in 2008 (highly suspicious for error), 302 missing DOB. The number of residents per year peaks in 2007. The raw datafile, 67% of assessments are female, 84% white, 11% Afr. American.   
+
+> •	Using the MDS data determine how consistent the identifying data are across records for the same persons who have multiple records.   This means, among those with more than one record, what is the rate of inconsistency for date of birth, gender and race. DoB, gender and race have multiple ways in which they could disagree, in addition to calculating the rate of inconsistency, characterize the different ways (e.g. day, month or year of birth; missing categories of information in which this inconsistency manifests itself).  
+
+Basic strategy: We reformat race into dummary categories (e.g. rc_white). The MDS dataset will be grouped by ID, a series of flags will be generated to identify disparate records among those variables expected to be fixed.  Then the findings will be summarized in a set of tables.  
+
+## Reformat  
+```{r }
+df_mds_2 <- df_mds %>%
+  mutate(rc_white = if_else(idrace == 5, 1L, 0L),
+         rc_black = if_else(idrace == 3, 1L, 0L),
+         rc_oth   = if_else(idrace != 5 | idrace !=3, 1L, 0L),
+         female = if_else(idgendr==2, 1L, 0L),
+         age = floor((dmdate - idbirdt) / 365.25))
+```
+
+## Consistency of data across assessments  
+```{r }
+df_mds_dups <- df_mds_2 %>%
+  group_by(id) %>%
+  summarize(n = n(),
+            n_gendr = n_distinct(idgendr, na.rm=T),
+            n_race  = n_distinct(idrace, na.rm=T),
+            n_white = n_distinct(rc_white, na.rm=T),
+            n_black = n_distinct(rc_black, na.rm=T),
+            n_birdt = n_distinct(idbirdt, na.rm=T),
+            n_birmonyr = n_distinct(paste0(month(idbirdt), '-', year(idbirdt)), na.rm=T)
+            ) %>%
+  mutate_at(vars(starts_with('n_')), factor)
+
+summary(df_mds_dups[,3:8]) %>%
+  kable(.)
+```
+
+### Discussion  
+By individual a value of 0 denotes no entries, a value of 2 means two distinct values for that variable (within person), and so on. There are a few missing entries but it's not the primary concern. While most only have one value, many have multiple values for the same variable (which is incoherent) and would need to be adjudicated in an analysis. In the extreme, one individual has 8 different birth dates across assessments. Birth dates may vary by a few days, or only be entered as the first of the month etc. If you recode the birth date to the month-year you may be able to collapse conflicting birthdates into the same category of month-year (`birmonyr`). This resolves about 3000 conflicted birthdates but still leaves many conflicts.  
+
+# Assessment of Medicare Enrollment File  
+
+## in-file of dataset  
+```{r }
+df_denom <- haven::read_dta(paste0(wd.data, 'denon_select.dta'))  
+
+des_df(df_denom, 'Denominator dataset', c('id'))
+```
+
+### Data structure  
+```{r }
+str(df_denom)
+```
+
+### Summary statistics  
+
+#### Date of birth  
+```{r }
+summary(df_denom$hkdob)
+ggplot(df_denom, aes(x = hkdob)) +
+  geom_histogram() +
+  scale_x_date() +
+  theme_classic()
+```
+
+#### Year  
+```{r }
+df_denom %>%
+  group_by(hkyear) %>%
+  summarize(n_recs = n(),
+            n_id = n_distinct(id), 
+            percent = round((n() / nrow(df_mds))*100, 3)) %>%
+  kable(.)
+```
+Importantly, there are no duplicates within year. Each enrollee should have one record per year.  
+
+#### Year cross-over  
+```{r }
+df_denom %>%
+  group_by(id) %>%
+  summarize(n_yrs = n_distinct(hkyear)) %>%
+  ungroup() %>%
+  group_by(n_yrs) %>%
+  summarize(n_benes = n(), 
+            percent = round((n() / nrow(df_mds))*100, 3)) %>%
+  kable(.)
+```
+
+15% of the sample exists across all years (n_yrs=11).  
+
+#### Sex  
+```{r }
+df_denom %>%
+  group_by(hksex) %>%
+  summarize(n = n(),
+            percent = round((n() / nrow(df_mds))*100,3)) %>%
+  kable(.)
+```
+
+```{r }
+df_denom %>%
+  group_by(hkrace) %>%
+  summarize(n = n(),
+            percent = round((n() / nrow(df_mds))*100,3)) %>%
+  kable(.)
+```
+
+#### Summary description  
+Median age date of birth is in 1930s (i.e. the denominator file represents younger person than the MDS assessments). The years span 1998 - 2008, with no duplicates within year. most recent is in 2008 (highly suspicious for error), 302 missing DOB. The number of residents per year peaks in 2007. The raw datafile, 67% of assessments are female, 84% white, 11% Afr. American.   
+
+# Matching MDS and Medicare file  
+
+> Match the MDS and Medicare enrollment records based upon patient ID, using the first MDS record to match for those cases that have multiple MDS records.  Next, compare the DoB, gender and Race from the two different data sources.  Note that DoB is necessarily measured the same way across the two data sources as is gender (although there may be differing levels of missing data). The race variables across the two data sets are coded differently so it may be important to separately estimate the degree of agreement across the categories that are comparably labeled (e.g. white vs. white; black vs. black) since the Medicare Enrollment record is known to underestimate the number of Hispanic and Asian-Americans.    
+
+Although not explicility said above, each beneficiary may have many records in the enrollment file. Particular instruction for joining wasn't given on this dimension so the following was done:
+1) Compute the year of MDS assessment  
+2) Take the first assessment by person-year  
+3) Match to denominator on beneficiary ID and year of enrollment  
+4) Take the first match by person  
+
+This allows a comparison of the MDS assessment and the enrollment file within the same year.  
+
+## Prepare for matching  
+
+### MDS record, first row per person  
+```{r }
+df_mds_rowone <- df_mds_2 %>%
+  arrange(id, dmdate) %>%
+  mutate(year = year(dmdate)) %>%
+  group_by(id, year) %>%
+  slice(1) %>%
+  ungroup() 
+
+des_df(df_mds_rowone, 'limited to first row by person, year', 'id')
 ```
 
 
+
+### Match  
+```{r }
+n_rw_lhs <- nrow(df_mds_rowone)
+n_id_lhs <- n_distinct(df_mds_rowone$id)
+n_rw_rhs <- nrow(df_denom)
+n_id_rhs <- n_distinct(df_denom$id)
+
+df_mtch <- inner_join(df_mds_rowone, 
+                      df_denom, 
+                      by=c('id', 'year'='hkyear')) %>%
+  group_by(id) %>%
+  slice(1) %>%
+  ungroup()
+
+cat('N rows, MDS file:', n_rw_lhs, 'N rows, Denom file:', n_rw_rhs, '\n')
+cat('N IDs, MDS file:', n_id_lhs, 'N IDs, Denom file:', n_id_rhs, '\n')
+
+des_df(df_mtch, 'Inner join MDS / Denom.', 'id')
+```
+All ID's in the MDS file had at least one matching record in the enrollment file.  
+
 # Session Info  
 Thank you for taking the time to review my work!  
-
 ```{r, }
 sessioninfo::session_info()[[1]]
 ```
