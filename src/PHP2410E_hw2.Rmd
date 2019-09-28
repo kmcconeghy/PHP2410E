@@ -79,7 +79,10 @@ The overall objective is to better understand the validity of MDS assessments by
 
 ## Dataset  
 ```{r }
-df_mds <- haven::read_dta(paste0(wd.data, 'mds_select.dta'))  
+df_mds <- haven::read_dta(paste0(wd.data, 'mds_select.dta')) %>%
+  mutate(idrace = factor(idrace, levels=1:5, labels = c('Native-American', 'Asian', 'Black', 
+                                                        'Hispanic', 'White')),
+         idgendr = factor(idgendr, levels=1:2, labels = c('Male', 'Female')))
 
 des_df(df_mds, 'MDS dataset', c('id'))
 ```
@@ -99,8 +102,8 @@ summary(df_mds$idbirdt)
 Figure 1. Histogram of MDS date of birth  
 ```{r, fig.width=4, fig.height=4}
 ggplot(df_mds, aes(x = idbirdt)) +
-  geom_histogram() +
-  scale_x_date() +
+  geom_histogram(aes(y=..density..), color='navyblue',fill='blue') +
+  scale_x_date() + ylab('Density') + xlab('MDS Date of Birth') +
   theme_classic()
 ```
 
@@ -112,7 +115,9 @@ df_mds %>%
   summarize(`No. assessments` = n(),
             `No. persons` = n_distinct(id), 
             `%` = (n() / nrow(df_mds))*100) %>%
-  kable(., digits=1)
+  mutate(year = factor(year)) %>%
+  rename(Year = year) %>%
+  kable(., digits=1, format.args=list(big.mark = ','))
 ```
 
 #### Sex  
@@ -121,7 +126,8 @@ df_mds %>%
   group_by(idgendr) %>%
   summarize(`No. assessments` = n(),
             percent = (n() / nrow(df_mds))*100) %>%
-  kable(., digits=1)
+  rename(Gender = idgendr) %>%
+  kable(., digits=1, format.args=list(big.mark = ','))
 ```
 
 Where 1 is male and 2 is female.  
@@ -131,13 +137,13 @@ df_mds %>%
   group_by(idrace) %>%
   summarize(`No. assessments` = n(),
             `%` = (n() / nrow(df_mds))*100) %>%
-  kable(., digits=1)
+  rename(`MDS Race` = idrace) %>%
+  kable(., digits=1, format.args=list(big.mark = ','))
 ```
-Where 1 is native american, 2 is asian, 3 is black, 4 is hispanic and 5 is white.  
 
-#### Summary description  
+#### Summary  
 
-Median age date of birth is in 1921, most recent is in 2008 (highly suspicious for error), 302 missing DOB. The number of residents per year peaks in 2007. The raw datafile, 67% of assessments are female, 84% white, 11% Afr. American.   
+Median age date of birth is in 1921, most recent is in 2008 (highly suspicious for error), 302 missing DOB. The number of residents per year peaks in 2007. In the raw MDS file, 67% of assessments are female, 84% white, 11% Afr. American.   
 
 > •	Using the MDS data determine how consistent the identifying data are across records for the same persons who have multiple records.   This means, among those with more than one record, what is the rate of inconsistency for date of birth, gender and race. DoB, gender and race have multiple ways in which they could disagree, in addition to calculating the rate of inconsistency, characterize the different ways (e.g. day, month or year of birth; missing categories of information in which this inconsistency manifests itself).  
 
@@ -159,33 +165,35 @@ df_mds_2 <- df_mds %>%
          rc_hisp = if_else(idrace == 4, 1L, 0L),
          rc_recode = case_when(
            is.na(idrace) ~ 0,
-           idrace == 1 ~ 6,
-           idrace == 2 ~ 4,
-           idrace == 3 ~ 2,
-           idrace == 4 ~ 5,
-           idrace == 5 ~ 1),
+           idrace == levels(df_mds$idrace)[1] ~ 6,
+           idrace == levels(df_mds$idrace)[2] ~ 4,
+           idrace == levels(df_mds$idrace)[3] ~ 2,
+           idrace == levels(df_mds$idrace)[4] ~ 5,
+           idrace == levels(df_mds$idrace)[5] ~ 1),
+         rc_recode = factor(rc_recode, levels=c(0,1,2,4,5,6), 
+                            labels = c('Unknown', 'White', 'Black', 'Asian', 
+                                       'Hispanic', 'North American Native')),
          female = if_else(idgendr==2, 1L, 0L),
          age = floor((dmdate - idbirdt) / 365.25)) 
 ```
 
-## Consistency of data across assessments  
+## Consistency of data across MDS assessments  
 ```{r }
+library(data.table) #used for computational speed  
 df_mds_dups <- df_mds_2 %>%
-  group_by(id) %>%
-  summarize(n = n(),
-            `Dup. MDS gender` = n_distinct(idgendr, na.rm=T),
-            `Dup. MDS race cat.`  = n_distinct(idrace, na.rm=T),
-            `Dup. MDS race recode`  = n_distinct(rc_recode, na.rm=T),
-            `Dup. MDS race white` = n_distinct(rc_white, na.rm=T),
-            `Dup. MDS race black` = n_distinct(rc_black, na.rm=T),
-            `Dup. MDS race hispanic`  = n_distinct(rc_hisp, na.rm=T), 
-            `Dup. MDS DOB` = n_distinct(idbirdt, na.rm=T),
-            `Dup. MDS Birth Year-Month` = n_distinct(paste0(month(idbirdt), '-', 
-                                                            year(idbirdt)), na.rm=T)
-            ) %>%
-  mutate_at(vars(contains('MDS')), factor)
+  mutate(mon_yr = paste0(month(idbirdt), '-', year(idbirdt))) %>%
+  setDT(.) %>%
+  .[, by = id,
+     .(`Gender` = n_distinct(idgendr, na.rm=T),
+            `Race cat.`  = n_distinct(idrace, na.rm=T),
+            `Race recode`  = n_distinct(rc_recode, na.rm=T),
+            `DOB` = n_distinct(idbirdt, na.rm=T),
+            `Birth Year-Month` = n_distinct(mon_yr, na.rm=T))] %>%
+  setDF(.)
 
-summary(df_mds_dups[,3:8]) %>%
+df_mds_dups[,2:6] %>%
+  sapply(., factor) %>%
+  summary(.) %>%
   kable(., digits=2, format.args=list(big.mark = ',')) %>% 
 kable_styling(latex_options = "scale_down")
 ```
@@ -194,17 +202,19 @@ kable_styling(latex_options = "scale_down")
 By individual a value of 0 denotes no entries, a value of 1 or more means 1 or more distinct values for that variable (within person). There are a few missing entries but it's not the primary concern. While most only have one value, many have multiple values for the same variable (which is incoherent) and would need to be adjudicated in an analysis. In the extreme, one individual has 8 different birth dates across assessments. Birth dates may vary by a few days, or only be entered as the first of the month etc. If you recode the birth date to the month-year you may be able to collapse conflicting birthdates into the same category of month-year (`birmonyr`). This resolves about 3000 conflicted birthdates but still leaves many conflicts. Note: The summary statistics presented are by record, and multiple records per person so somewhat misleading for population inference.  
 
 # Assessment of Medicare Enrollment File  
-
 ## Dataset  
 ```{r }
-df_denom <- haven::read_dta(paste0(wd.data, 'denon_select.dta'))  
-
+df_denom <- haven::read_dta(paste0(wd.data, 'denon_select.dta')) %>%
+  mutate(hksex = factor(hksex, levels=1:2, labels = c('Male', 'Female')),
+         hkrace = factor(hkrace, levels=c(0,1,2,4,5,6), 
+                            labels = c('Unknown', 'White', 'Black', 'Asian', 
+                                       'Hispanic', 'North American Native')))
 des_df(df_denom, 'Denominator dataset', c('id'))
 ```
 
 ### Data structure  
 ```{r }
-str(df_denom)
+str(df_denom[,2:5])
 ```
 
 ### Summary statistics  
@@ -212,13 +222,12 @@ str(df_denom)
 #### Figure 2. Denominator file date of birth  
 ```{r }
 summary(df_denom$hkdob)
-
 ```
 
 ```{r, fig.width=4, fig.height=4}
 ggplot(df_denom, aes(x = hkdob)) +
-  geom_histogram() +
-  scale_x_date() +
+  geom_histogram(aes(y=..density..), fill='blue', color='navyblue') +
+  scale_x_date() + xlab('Enrollment File Date of Birth') + ylab('Density') +
   theme_classic()
 ```
 
@@ -229,7 +238,8 @@ df_denom %>%
   summarize(`No. records` = n(),
             `No. persons` = n_distinct(id), 
             `%`  = (n() / nrow(df_denom))*100) %>%
-  mutate(hkyear = factor(hkyear)) %>%
+  rename(Year = hkyear) %>%
+  mutate(Year = factor(Year)) %>%
   kable(., digits=2, format.args=list(big.mark = ','))
 ```
 Importantly, there are no duplicates within year. Each enrollee should have one record per year.  
@@ -244,7 +254,7 @@ df_denom %>%
   summarize(`No. persons` = n(), 
             `%` = (n() / nrow(df_denom))*100) %>%
   mutate(`No. years / person` = factor(`No. years / person`)) %>%
-  kable(., digits=2, format.args=list(big.mark = ','))
+  kable(., digits=2, format.args=list(big.mark = ','), align = 'ccc')
 ```
 
 15% of the Medicare enrollees have been enrolled across all 11 years.   
@@ -255,32 +265,35 @@ df_denom %>%
   group_by(hksex) %>%
   summarize(`No. records` = n(),
             `%` = (n() / nrow(df_denom))*100) %>%
+  rename(`Denom. Sex` = hksex) %>%
   kable(., digits=2, format.args=list(big.mark = ','))
 ```
-Note: 1 is male, 2 is female  
 
 ```{r }
 df_denom %>%
   group_by(hkrace) %>%
   summarize(`No. records` = n(),
             `%` = (n() / nrow(df_denom))*100) %>%
+  rename(`Denom. Race` = hkrace) %>%
   kable(., digits=2, format.args=list(big.mark = ','))
 ```
 
 ## Consistency of data across enrollment years  
 ```{r }
 df_denom_dups <- df_denom %>%
-  group_by(id) %>%
-  summarize(`No. records` = n(),
-            `Dup. Denom. Gender` = n_distinct(hksex, na.rm=T),
-            `Dup. Denom. Race`  = n_distinct(hkrace, na.rm=T),
-            `Dup. Denom. DOB` = n_distinct(hkdob, na.rm=T)
-            ) %>%
-  mutate_at(2:5, factor)
-
-summary(df_denom_dups[,2:5]) %>%
+  setDT(.) %>%
+  .[, by = id,
+     .(`Gender` = n_distinct(hksex, na.rm=T),
+            `Race cat.`  = n_distinct(hkrace, na.rm=T),
+            `DOB` = n_distinct(hkdob, na.rm=T))] %>%
+  setDF(.) 
+  
+df_denom_dups[,2:4] %>%
+  sapply(., factor) %>%
+  summary(.) %>%
   kable(., digits=2, format.args=list(big.mark = ','))
 ```
+
 Discussion. Sex, race, and date of birth do not vary within ID number (across enrollment years).  
 
 #### Summary description  
@@ -356,7 +369,7 @@ Note:  The MDS race/ethnicity variable has been recoded to match categories with
 round(prop.table(mytable, margin = 1), 3)
 ```
 
-There is 98% agreement between the MDS and denominator on white race (category 1), 95% on black race (cat. 2), 60% agreement on asian race (cat. 4), and poor agreement on hispanic or native american race (cat. 5, 6). Many of the individuals coded as hispanic or native american, are coded white in the denominator file.   
+There is 98% agreement between the MDS and denominator on white race (category 1), 95% on black race (cat. 2), 60% agreement on asian race (cat. 4), and poor agreement on hispanic or native american race (cat. 5, 6). Many of the individuals coded as hispanic or native american in the MDS, are listed white in the denominator file.   
 
 ## Comparison of Date of Birth  
 ```{r }
@@ -374,6 +387,7 @@ df_mtch_2 %>%
   group_by(chk_dob) %>%
   summarize(`No. records` = n(),
             `%` = (n() / nrow(df_mtch_2))*100) %>%
+  rename(`DOB match` = chk_dob) %>%
   kable(., digits=2, format.args=list(big.mark = ','))
 ```
 
@@ -385,6 +399,7 @@ df_mtch_2 %>%
   group_by(chk_mob) %>%
   summarize(`No. records` = n(),
             `%` = (n() / nrow(df_mtch_2))*100) %>%
+  rename(`Month of birth match` = chk_mob) %>%
   kable(., digits=2, format.args=list(big.mark = ','))
 ```
 

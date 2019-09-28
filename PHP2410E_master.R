@@ -27,7 +27,7 @@
   
   #--IF ONLY WANT ONE FILE TO RUN
   #-- Ex. B07('A01', wd.CodeFiles, wd.ReportFiles)
-  render_hw('hw1', wd.code, prj.hw, wd.report)
+  render_hw('hw2', wd.code, prj.hw, wd.report)
   
   
   cat(paste0('Project Run: ', prj.RunTime %--% Sys.time()))
